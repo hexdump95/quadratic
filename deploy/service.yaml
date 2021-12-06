@@ -1,0 +1,12 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: quadratic
+  namespace: functions
+spec:
+  template:
+    spec:
+      containers:
+        - image: ghcr.io/hexdump95/quadratic:latest # TODO
+          ports:
+            - containerPort: 8080
