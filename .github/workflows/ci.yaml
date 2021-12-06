@@ -1,0 +1,19 @@
+name: CI
+on: push
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    container: docker:latest
+    services:
+      dind:
+        image: docker:dind
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Push image to ghcr
+        run: |
+          echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u hexdump95 --password-stdin
+          docker build . -t ghcr.io/$GITHUB_REPOSITORY:${GITHUB_REF##*/} -t ghcr.io/$GITHUB_REPOSITORY:latest
+          docker push ghcr.io/$GITHUB_REPOSITORY:${GITHUB_REF##*/}
+          docker push ghcr.io/$GITHUB_REPOSITORY:latest
+          docker logout
