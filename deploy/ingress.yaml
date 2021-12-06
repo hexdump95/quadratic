@@ -1,0 +1,35 @@
+apiVersion: configuration.konghq.com/v1
+kind: KongPlugin
+metadata:
+  name: quadratic-host-rewrite
+  namespace: kong
+plugin: request-transformer
+config:
+  add:
+    headers:
+      - "Host: quadratic.functions.k8s.sergiovillanueva.ar"
+  replace:
+    headers:
+      - "Host: quadratic.functions.k8s.sergiovillanueva.ar"
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: quadratic-ingress
+  namespace: kong
+  annotations:
+    kubernetes.io/ingress.class: kong
+    konghq.com/strip-path: "true"
+    konghq.com/plugins: quadratic-host-rewrite
+spec:
+  rules:
+    - host: k8s.sergiovillanueva.ar
+      http:
+        paths:
+          - path: /quadratic
+            pathType: Prefix
+            backend:
+              service: 
+                name: kong-proxy
+                port: 
+                  number: 80

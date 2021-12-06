@@ -9,7 +9,7 @@ import (
 func main() {
 	router := gin.Default()
 
-	router.POST("/quadratic", quadratic)
+	router.POST("/", quadratic)
 
 	router.Run("0.0.0.0:8080")
 }
