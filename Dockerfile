@@ -2,6 +2,7 @@ FROM gcr.io/distroless/static AS base
 
 WORKDIR /
 LABEL maintainer="Sergio Villanueva <sergiovillanueva@protonmail.com>"
+LABEL org.opencontainers.image.source="https://github.com/hexdump95/quadratic"
 EXPOSE 8080
 
 FROM golang:1.17-alpine AS builder

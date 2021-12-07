@@ -10,3 +10,9 @@ spec:
         - image: ghcr.io/hexdump95/quadratic:latest # TODO
           ports:
             - containerPort: 8080
+          env:
+            - name: MONGODB_URI
+              valueFrom:
+                secretKeyRef:
+                  name: quadratic-secrets
+                  key: mongodb-uri
