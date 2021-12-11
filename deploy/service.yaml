@@ -7,7 +7,7 @@ spec:
   template:
     spec:
       containers:
-        - image: ghcr.io/hexdump95/quadratic:latest # TODO
+        - image: ghcr.io/hexdump95/quadratic:$IMAGE_TAG
           ports:
             - containerPort: 8080
           env:

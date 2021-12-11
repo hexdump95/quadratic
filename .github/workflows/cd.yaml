@@ -1,0 +1,78 @@
+name: "CI/CD"
+on:
+  push:
+    branches: [develop, release-*]
+    tags: ["*"]
+jobs:
+  test:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v2
+        with:
+          go-version: "1.17"
+      - name: Format and run test
+        run: |-
+          go fmt
+          go test -json > report.json
+          go test -coverprofile=coverage.out
+      - name: Analyze with SonarCloud
+        if: ${{ success() && github.ref == 'refs/heads/develop' }}
+        uses: sonarsource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >-
+            -Dsonar.organization=hexdump95
+            -Dsonar.projectKey=hexdump95_quadratic
+            -Dsonar.sources=.
+            -Dsonar.tests=.
+            -Dsonar.exclusions="*_test.go"
+            -Dsonar.test.inclusions="*_test.go"
+            -Dsonar.go.tests.reportPaths=report.json
+            -Dsonar.go.coverage.reportPaths=coverage.out
+  integration-test:
+    if: ${{ contains(github.ref, 'release') }}
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      # - uses: actions/setup-go@v2
+      #   with:
+      #     go-version: "1.17"
+      # - name: Format and run test
+      #   run: |-
+      #     go fmt
+      #     go test
+  build:
+    if: ${{ always() && contains(needs.test.result, 'success') && !contains(needs.integration-test.result, 'failure') }}
+    runs-on: ubuntu-20.04
+    needs: [test, integration-test]
+    container: docker:latest
+    env:
+      CR_SERVER: ghcr.io
+    services:
+      dind:
+        image: docker:dind
+    steps:
+      - uses: actions/checkout@v2
+      - name: docker login
+        run: echo ${{ secrets.CR_TOKEN }} | docker login $CR_SERVER -u ${{ secrets.CR_USER }} --password-stdin
+      - name: set image tag
+        run: echo "IMAGE_TAG=$(if [ $GITHUB_REF_TYPE = 'branch' ]; then echo $(date -u +'%FT%TZ' | sed s/:/-/g); else echo $GITHUB_REF; fi)" >> $GITHUB_ENV
+      - name: Build image
+        run: >-
+          docker build .
+          -t $CR_SERVER/$GITHUB_REPOSITORY:${IMAGE_TAG##*/}
+          -t $CR_SERVER/$GITHUB_REPOSITORY:$(echo ${IMAGE_TAG##*/} | cut -f 1-2 -d ".")
+          -t $CR_SERVER/$GITHUB_REPOSITORY:$(echo ${IMAGE_TAG##*/} | cut -f 1 -d ".")
+          -t $CR_SERVER/$GITHUB_REPOSITORY:latest
+      - name: Push image to $CR_SERVER
+        run: |-
+          docker push $CR_SERVER/$GITHUB_REPOSITORY:${IMAGE_TAG##*/}
+          docker push $CR_SERVER/$GITHUB_REPOSITORY:$(echo ${IMAGE_TAG##*/} | cut -f 1-2 -d ".")
+          docker push $CR_SERVER/$GITHUB_REPOSITORY:$(echo ${IMAGE_TAG##*/} | cut -f 1 -d ".")
+          docker push $CR_SERVER/$GITHUB_REPOSITORY:latest
+      - run: docker logout $CR_SERVER

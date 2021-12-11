@@ -32,14 +32,14 @@ func quadratic(c *gin.Context) {
 	discriminant := math.Pow(B, 2) - 4*A*C
 
 	if discriminant < 0 {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Complex root. Not yet implemented!"})
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Complex root. Not yet implemented!"})
 	} else if discriminant == 0 {
 		x := -request.B / (2 * request.A)
-		c.IndentedJSON(http.StatusOK, gin.H{"x": x})
+		c.JSON(http.StatusOK, gin.H{"x": x})
 	} else {
 		c.JSON(http.StatusOK, gin.H{
-			"x1": (B + math.Sqrt(discriminant)) / (2*A),
-			"x2": (B - math.Sqrt(discriminant)) / (2*A),
+			"x1": (B + math.Sqrt(discriminant)) / (2 * A),
+			"x2": (B - math.Sqrt(discriminant)) / (2 * A),
 		})
 	}
 
