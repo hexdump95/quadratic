@@ -118,5 +118,5 @@ jobs:
           gcloud container clusters get-credentials ${{ secrets.GCP_CLUSTER }} --region=${{ secrets.GCP_REGION }} --project=${{ secrets.GCP_PROJECT }}
       - name: Deploy service
         run: |-
-          sed -i s/\$IMAGE_TAG/$IMAGE_TAG/ deploy/service.yaml
+          sed -i s/\$IMAGE_TAG/${IMAGE_TAG##*/}/ deploy/service.yaml
           kubectl apply -f deploy/service.yaml
