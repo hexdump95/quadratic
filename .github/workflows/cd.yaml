@@ -30,8 +30,9 @@ jobs:
             -Dsonar.projectKey=hexdump95_quadratic
             -Dsonar.sources=.
             -Dsonar.tests=.
-            -Dsonar.exclusions="*_test.go"
+            -Dsonar.exclusions="*_test.go,deploy/**"
             -Dsonar.test.inclusions="*_test.go"
+            -Dsonar.test.exclusions="*_test.go,deploy/**"
             -Dsonar.go.tests.reportPaths=report.json
             -Dsonar.go.coverage.reportPaths=coverage.out
   integration-test:
@@ -98,6 +99,7 @@ jobs:
     if: ${{ always() && contains(needs.build.result, 'success') && ( contains(github.ref, 'tags') || contains(github.ref, 'release') ) }}
     runs-on: ubuntu-20.04
     needs: build
+    container: google/cloud-sdk:365.0.1-alpine
     steps:
       - uses: actions/download-artifact@v2
         with:
