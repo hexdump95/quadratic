@@ -111,7 +111,8 @@ jobs:
         run: yes | gcloud components install kubectl
       - name: Login to gcloud
         run: |-
-          gcloud auth activate-service-account --key-file=<(echo ${{ secrets.GKE_KEY }})
+          echo ${{ secrets.GKE_KEY }} > key.json
+          gcloud auth activate-service-account --key-file=key.json
           gcloud container clusters get-credentials ${{ secrets.GCP_CLUSTER }} --region=${{ secrets.GCP_REGION }} --project=${{ secrets.GCP_PROJECT }}
       - name: Deploy service
         run: |-
