@@ -61,7 +61,9 @@ jobs:
       - name: docker login
         run: echo ${{ secrets.CR_TOKEN }} | docker login $CR_SERVER -u ${{ secrets.CR_USER }} --password-stdin
       - name: set image tag
-        run: echo "IMAGE_TAG=$(if [ $GITHUB_REF_TYPE = 'branch' ]; then echo $(date -u +'%FT%TZ' | sed s/:/-/g); else echo $GITHUB_REF; fi)" >> $GITHUB_ENV
+        run: |-
+          echo "IMAGE_TAG=$(if [ $GITHUB_REF_TYPE = 'branch' ]; then echo $(date -u +'%FT%TZ' | sed s/:/-/g); else echo $GITHUB_REF; fi)" > IMAGE_TAG
+          cat IMAGE_TAG >> $GITHUB_ENV
       - name: Build image
         run: >-
           docker build .
@@ -69,10 +71,47 @@ jobs:
           -t $CR_SERVER/$GITHUB_REPOSITORY:$(echo ${IMAGE_TAG##*/} | cut -f 1-2 -d ".")
           -t $CR_SERVER/$GITHUB_REPOSITORY:$(echo ${IMAGE_TAG##*/} | cut -f 1 -d ".")
           -t $CR_SERVER/$GITHUB_REPOSITORY:latest
-      - name: Push image to $CR_SERVER
+      - name: Push image to ghcr.io
         run: |-
           docker push $CR_SERVER/$GITHUB_REPOSITORY:${IMAGE_TAG##*/}
           docker push $CR_SERVER/$GITHUB_REPOSITORY:$(echo ${IMAGE_TAG##*/} | cut -f 1-2 -d ".")
           docker push $CR_SERVER/$GITHUB_REPOSITORY:$(echo ${IMAGE_TAG##*/} | cut -f 1 -d ".")
           docker push $CR_SERVER/$GITHUB_REPOSITORY:latest
       - run: docker logout $CR_SERVER
+      - uses: actions/upload-artifact@v2
+        with:
+          name: IMAGE_TAG
+          path: IMAGE_TAG
+  deploy-dev:
+    if: ${{ always() && contains(needs.build.result, 'success') && contains(github.ref, 'heads/develop') }}
+    runs-on: ubuntu-20.04
+    needs: build
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: IMAGE_TAG
+      - name: set image tag
+        run: cat IMAGE_TAG >> $GITHUB_ENV
+      - uses: actions/checkout@v2
+      - run: echo deploy!
+  deploy-prod:
+    if: ${{ always() && contains(needs.build.result, 'success') && ( contains(github.ref, 'tags') || contains(github.ref, 'release') ) }}
+    runs-on: ubuntu-20.04
+    needs: build
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: IMAGE_TAG
+      - name: set image tag
+        run: cat IMAGE_TAG >> $GITHUB_ENV
+      - uses: actions/checkout@v2
+      - name: Install kubectl
+        run: yes | gcloud components install kubectl
+      - name: Login to gcloud
+        run: |-
+          gcloud auth activate-service-account --key-file=<(echo ${{ secrets.GKE_KEY }})
+          gcloud container clusters get-credentials ${{ secrets.GCP_CLUSTER }} --region=${{ secrets.GCP_REGION }} --project=${{ secrets.GCP_PROJECT }}
+      - name: Deploy service
+        run: |-
+          sed -i s/\$IMAGE_TAG/$IMAGE_TAG/ deploy/service.yaml
+          kubectl apply -f deploy/service.yaml
